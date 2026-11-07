@@ -142,7 +142,7 @@
 		bouton.className = 'modale-fermer';
 		bouton.setAttribute('aria-label', T.fermer);
 		bouton.innerHTML = '&times;';
-		bouton.addEventListener('click', fermerModale);
+		bouton.addEventListener('click', demanderFermeture);
 		wrap.insertBefore(bouton, defile);
 		wrap.setAttribute('role', 'dialog');
 		wrap.setAttribute('aria-modal', 'true');
@@ -185,17 +185,41 @@
 		if (declencheur) declencheur.focus({ preventScroll: true });
 	}
 
+	// L'adresse suit la fenêtre ouverte (#contact…) : lien partageable, bouton Précédent qui referme.
+	var entreeAjoutee = false;
+
+	function demanderFermeture() {
+		if (entreeAjoutee) {
+			history.back(); // le hashchange qui suit referme la fenêtre
+		} else {
+			fermerModale();
+			history.replaceState(null, '', location.pathname + location.search);
+		}
+	}
+
 	document.addEventListener('click', function (e) {
 		var lien = e.target.closest('a.fancybox, a[href^="#"]');
 		if (!lien) return;
 		var id = (lien.getAttribute('href') || '').slice(1);
-		if (id && ouvrirModale(id, lien)) e.preventDefault();
+		if (!id || !ouvrirModale(id, lien)) return;
+		e.preventDefault();
+		if (location.hash === '#' + id) return;
+		if (entreeAjoutee) {
+			history.replaceState(null, '', '#' + id);
+		} else {
+			history.pushState(null, '', '#' + id);
+			entreeAjoutee = true;
+		}
 	});
-	if (overlay) overlay.addEventListener('click', fermerModale);
+	window.addEventListener('hashchange', function () {
+		entreeAjoutee = false;
+		if (!ouvrirModale(location.hash.slice(1))) fermerModale();
+	});
+	if (overlay) overlay.addEventListener('click', demanderFermeture);
 	document.addEventListener('keydown', function (e) {
 		if (e.key !== 'Escape') return;
 		if (fermerVisionneuse()) return;
-		fermerModale();
+		if (ouverte) demanderFermeture();
 	});
 	if (location.hash.length > 1) ouvrirModale(location.hash.slice(1));
 
